@@ -5,10 +5,10 @@
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 
-#include <vector>
-#include <string>
 #include <stdint.h>
 #include <time.h>
+#include <vector>
+#include <string>
 #include <algorithm>
 
 const char* ssid = "SSID";
@@ -642,7 +642,7 @@ private:
         static const char *chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
         const unsigned int max = 26 + 26 + 10 + 1;
         char tmp[50];
-//        srand((unsigned int)time(0));
+//      srand((unsigned int)time(0));
         srand((unsigned int)timevalue);
         int len = 15 + rand() % 16;
         for (int i = 0; i < len; i++) {
@@ -672,7 +672,7 @@ private:
       std::string oauth_timestamp = "oauth_timestamp";
       if (!is_key_contains(*args, oauth_timestamp)) {
         oauth_timestamp += '=';
-//        oauth_timestamp += to_s((int)time(nullptr));
+//      oauth_timestamp += to_s((int)time(nullptr));
         oauth_timestamp += to_s((int)timevalue);
         args->push_back(oauth_timestamp);
       }
@@ -781,49 +781,47 @@ private:
     }
     return query;
   }
-  static std::string sign_hmac_sha1(const std::string &m, const std::string &k)
+  static void hmac_sha1(uint8_t const *key, size_t keylen, uint8_t const *in, size_t inlen, uint8_t *out)
   {
+    sha1::Context sha1;
+    uint8_t tmp[20];
+  
+    uint8_t ibuf[64];
+    uint8_t obuf[64];
+    memset(ibuf, 0, 64);
+    memset(obuf, 0, 64);
+    memcpy(ibuf, key, keylen);
+    memcpy(obuf, key, keylen);
+  
+    for (int i = 0; i < 64; i++) {
+      ibuf[i] ^= 0x36;
+      obuf[i] ^= 0x5c;
+    }
+  
+    sha1::Reset(&sha1);
+    sha1::Input(&sha1, ibuf, 64);
+    sha1::Input(&sha1, in, inlen);
+    sha1::Result(&sha1, tmp);
+  
+    sha1::Reset(&sha1);
+    sha1::Input(&sha1, obuf, 64);
+    sha1::Input(&sha1, tmp, 20);
+    sha1::Result(&sha1, out);
+  }
+  static std::string sign_hmac_sha1(std::string const &m, std::string const &k)
+  {
+    uint8_t key[20];
     uint8_t result[20];
-    hmac_sha1((uint8_t const *)k.c_str(), k.size(), (uint8_t const *)m.c_str(), m.size(), result);
+  
+    sha1::Context sha1;
+    sha1::Reset(&sha1);
+    sha1::Input(&sha1, (uint8_t const *)k.c_str(), k.size());
+    sha1::Result(&sha1, key);
+  
+    hmac_sha1(key, 20, (uint8_t const *)m.c_str(), m.size(), result);
     std::vector<char> vec;
     base64::encode((char const *)result, 20, &vec);
     return misc::to_stdstr(vec);
-  }
-  static void hmac_sha1(const uint8_t *key, size_t keylen, const uint8_t *in, size_t inlen, uint8_t *resbuf)
-  {
-    sha1::Context inner;
-    sha1::Context outer;
-    uint8_t tmpkey[20];
-    uint8_t digest[20];
-    uint8_t block[64];
-
-    const int IPAD = 0x36;
-    const int OPAD = 0x5c;
-
-    if (keylen > 64) {
-      struct sha1::Context keyhash;
-      sha1::Reset(&keyhash);
-      sha1::Input(&keyhash, (uint8_t const *)key, keylen);
-      sha1::Result(&keyhash, (uint8_t *)tmpkey);
-      key = tmpkey;
-      keylen = 20;
-    }
-
-    for (size_t i = 0; i < sizeof(block); i++) {
-      block[i] = IPAD ^ (i < keylen ? key[i] : 0);
-    }
-    sha1::Reset(&inner);
-    sha1::Input(&inner, (uint8_t const *)block, 64);
-    sha1::Input(&inner, (uint8_t const *)in, inlen);
-    sha1::Result(&inner, digest);
-
-    for (size_t i = 0; i < sizeof(block); i++) {
-      block[i] = OPAD ^ (i < keylen ? key[i] : 0);
-    }
-    sha1::Reset(&outer);
-    sha1::Input(&outer, (uint8_t const *)block, 64);
-    sha1::Input(&outer, (uint8_t const *)digest, 20);
-    sha1::Result(&outer, (uint8_t *)resbuf);
   }
 };
 
@@ -868,6 +866,13 @@ public:
         host_.assign(left, right - left);
       }
       path_ = right;
+    }
+    if (port_ == 0) {
+      if (scheme_ == "http") {
+        port_ = 80;
+      } else if (scheme_ == "https") {
+        port_ = 443;
+      }
     }
   }
   std::string const &scheme() const { return scheme_; }
@@ -929,7 +934,6 @@ private:
           path = l.path().c_str();
           port = l.port();
         }
-        if (port == 0) port = 443;
         WiFiClientSecure client;
         if (client.connect(host.c_str(), port)) {
           int len = opt.post_end - opt.post_begin;
@@ -942,10 +946,10 @@ private:
           client.println(len);
           client.println();
           client.write((uint8_t const *)opt.post_begin, len);
-//          delay(1000);
+//        delay(1000);
           String s = client.readString();
           *reply = std::string(s.c_str(), s.length());
-//          Serial.print(reply->c_str());
+//        Serial.print(reply->c_str());
           Serial.println("Tweeted");
           return true;
         }
@@ -954,53 +958,6 @@ private:
       }
     }
     return false;
-  }
-  static std::string make_authorization_string(const char *begin, const char *end)
-  {
-    std::vector<char> vec;
-    char const *ptr = begin;
-    char const *left = begin;
-    while (1) {
-      int c = -1;
-      if (ptr < end) {
-        c = *ptr & 0xff;
-      }
-      if (c == '&' || c == -1) {
-        if (left < ptr) {
-          if (!vec.empty()) {
-            vec.push_back(',');
-          }
-          std::string s(left, ptr);
-          misc::print(&vec, s);
-        }
-        if (c == -1) break;
-        ptr++;
-        left = ptr;
-      } else {
-        ptr++;
-      }
-    }
-    return misc::to_stdstr(vec);
-  }
-  static std::string make_boundary(const char *begin, const char *end)
-  {
-    std::string boundary = "-";
-    size_t pos = 0;
-    while (begin + pos + boundary.size() < end) {
-      if (memcmp(begin + pos, boundary.c_str(), boundary.size()) == 0) {
-        int i = pos + boundary.size();
-        int c = begin[i] & 0xff;
-        if (isdigit(c)) {
-          c = (c -'0' + 1) % 10;
-        } else {
-          c = 0;
-        }
-        boundary += c + '0';
-      }
-      pos++;
-    }
-    boundary += '-';
-    return boundary;
   }
 public:
   TwitterClient()
@@ -1023,7 +980,7 @@ public:
 
     url += "?status=";
     url += misc::url_encode(message);
-    if (media_ids) {
+    if (media_ids && !media_ids->empty()) {
       std::string ids;
       for (std::string const &media_id : *media_ids) {
         if (!media_id.empty()) {
@@ -1033,8 +990,10 @@ public:
           ids += media_id;
         }
       }
-      url += "&media_ids=";
-      url += ids;
+      if (!ids.empty()) {
+        url += "&media_ids=";
+        url += ids;
+      }
     }
 
     oauth::Request oauth_req = oauth::sign(url.c_str(), oauth::POST, keys());
@@ -1057,28 +1016,6 @@ IPAddress ntp_server_addr;
 const int NTP_PACKET_SIZE = 48;
 WiFiUDP ntp_udp;
 uint64_t millis64 = 0;
-
-// julian to gregorian
-void calJtoG(unsigned long j, int *year, int *month, int *day)
-{
-  int y, m, d;
-  y = (j * 4 + 128179) / 146097;
-  d = (j * 4 - y * 146097 + 128179) / 4 * 4 + 3;
-  j = d / 1461;
-  d = (d - j * 1461) / 4 * 5 + 2;
-  m = d / 153;
-  d = (d - m * 153) / 5 + 1;
-  y = (y - 48) * 100 + j;
-  if (m < 10) {
-    m += 3;
-  } else {
-    m -= 9;
-    y++;
-  }
-  *year = y;
-  *month = m;
-  *day = d;
-}
 
 void send_ntp_request()
 {
