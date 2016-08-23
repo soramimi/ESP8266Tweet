@@ -30,8 +30,8 @@ private:
       ptr++;
       if (isalnum(c) || strchr("_.-~", c)) {
         print(out, c);
-      } else if (c == ' ') {
-        print(out, '+');
+//      } else if (c == ' ') { // 空白も16進エンコードする
+//        print(out, '+');
       } else {
         char tmp[10];
         sprintf(tmp, "%%%02X", c);
@@ -557,8 +557,6 @@ public:
     return Success;
   }
 };
-
-
 
 class oauth {
 public:
