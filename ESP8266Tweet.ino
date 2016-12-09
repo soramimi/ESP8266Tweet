@@ -11,13 +11,22 @@
 #include <string>
 #include <algorithm>
 
-const char* ssid = "SSID";
-const char* password = "PASSWORD";
+// settings
 
-static char const consumer_key[]    = "XXXXXXXXXXXXXXXXXXXXXX";
-static char const consumer_sec[]    = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-static char const accesstoken[]     = "0000000000-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-static char const accesstoken_sec[] = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+const char *ssid = "SSID";
+const char *password = "PASSWORD";
+
+const char *HOSTNAME = "esp8266"; // example for http://esp8266.local/
+
+static char const consumer_key[]    = "xxxxxxxxxxxxxxxxxxxxxx";
+static char const consumer_sec[]    = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+static char const accesstoken[]     = "0000000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+static char const accesstoken_sec[] = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+
+const char *ntp_server = "time1.google.com";
+const int TIMEZONE = 9 * 60 * 60;
+
+//
 
 time_t timevalue = 0;
 
@@ -30,7 +39,7 @@ private:
       ptr++;
       if (isalnum(c) || strchr("_.-~", c)) {
         print(out, c);
-//      } else if (c == ' ') { // 空白も16進エンコードする
+//      } else if (c == ' ') { // 空白も16進エンコードするので、ここはコメント
 //        print(out, '+');
       } else {
         char tmp[10];
@@ -1007,8 +1016,6 @@ public:
 
 
 
-char ntp_server[] = "ntp.nict.jp";
-#define TIMEZONE (9 * 60 * 60)
 unsigned int ntp_local_port = 12300;
 IPAddress ntp_server_addr;
 const int NTP_PACKET_SIZE = 48;
@@ -1097,7 +1104,6 @@ void handleNotFound(){
   server.send(404, "text/plain", message);
 }
 
-
 void setup(void){
   millis64 = millis();
   Serial.begin(115200);
@@ -1122,7 +1128,7 @@ void setup(void){
   Serial.println("Starting UDP");
   ntp_udp.begin(ntp_local_port);
 
-  if (MDNS.begin("esp8266")) {
+  if (MDNS.begin(HOSTNAME)) {
     Serial.println("MDNS responder started");
   }
 
@@ -1179,7 +1185,6 @@ void processTime()
 
 void loop(void){
   processTime();
-
   server.handleClient();
 }
 
