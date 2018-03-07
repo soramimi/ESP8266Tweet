@@ -5,7 +5,9 @@
 #include <string>
 #include <algorithm>
 
-#define METHOD4
+#ifndef TWITTERMETHOD
+#define METHOD3
+#endif
 time_t timevalue = 0;
 
 class misc {
