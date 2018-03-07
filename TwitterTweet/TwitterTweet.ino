@@ -5,8 +5,7 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <TimeLib.h>
-#include <ArduinoJson.h>                  // https://github.com/bblanchon/ArduinoJson
-#include "secret.h"                       // uncomment if using secret.h file with credentials
+//#include "secret.h"                       // uncomment if using secret.h file with credentials
 #include "twitter.h"
 
 #ifndef WIFICONFIG
