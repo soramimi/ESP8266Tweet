@@ -4,9 +4,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-#ifndef TWITTERMETHOD
-#define METHOD3
-#endif
+
 time_t timevalue = 0;
 
 class misc {
@@ -977,6 +975,11 @@ private:
           port = l.port();
           }
         if (client->connect(host.c_str(), port)) {
+          String body, uname;
+          bool avail = false, textb = false, texteb= false, userb = false;
+          int ct=1;
+          unsigned long now = millis();
+          
 //          Serial.print("GET " + path );
 //          Serial.print(opt.right_str.c_str());
 //          Serial.println(" HTTP/1.1");
@@ -1000,130 +1003,25 @@ private:
           client->print("Authorization: OAuth");
           client->println(opt.get_begin);
           client->println("");
-
-          #ifdef METHOD1
-            String body = "{";
-            String headers;
-            bool avail = false;
-            bool finishedHeaders = false;
-            unsigned long now = millis();
-            while (millis() - now < 5000) {
-              while (client->available()) {
-                if(!finishedHeaders) {
-                  headers = client->readStringUntil('{');
-                  finishedHeaders = true;
-                }
-                char c = client->read();
-                avail = true;
-                if(finishedHeaders) body = body + c;
-              }
-              if (avail) break;
-            }
-          #endif
-      
-          #ifdef METHOD2
-            String body;
-            bool avail = false;
-            unsigned long now = millis();
             
-            while (millis() - now < 5000) {
-              while (client->available()) {
-                char c = client->read();
-                body = body + c;
-                avail = true;
-                if(body.endsWith("twitter.com/i/xss_report")) body="";
-//                if(body.endsWith("{\"statuses\":[")) body="{\"statuses\":[ ";
+          while (millis() - now < 5000) {
+            while (client->available()) {
+              char c = client->read();
+              if(!texteb) body = body + c;
+              uname = uname + c;
+              avail = true;
+              if (ct==1) {
+                if(body.endsWith(",\"text\":\"") or body.endsWith(",\"errors\":\"")) { body=""; textb = true; }
+                if(textb and body.endsWith("\",\"")) { body.remove(body.length()-3,3); ct=2; uname=""; texteb=true;}
+              } else if (ct == 2) {
+                if(uname.endsWith(",\"screen_name\":\"")) { uname="@"; userb = true; }
+                if(userb and uname.endsWith("\",\"")) { uname.remove(uname.length()-3,3); break; }
               }
-              if (avail) break;
             }
-            body.remove(0,3);
-          #endif
-
-          #ifdef METHOD3
-//            String body;
-//            
-//            bool avail = false;
-//            bool textb = false;
-//            unsigned long now = millis();
-//            
-//            while (millis() - now < 5000) {
-//              while (client->available()) {
-//                char c = client->read();
-//                body = body + c;
-//                avail = true;
-//                if(body.endsWith(",\"text\":\"") or body.endsWith(",\"errors\":\"")) { body=""; textb = true; }
-//                if(textb and body.endsWith("\",\"")) { body.remove(body.length()-3,3); break; }
-//              }
-//              if (avail and !(textb)) body= "";
-//              if (avail) break;
-//            }
-            String body;
-            String uname;
-            bool avail = false;
-            bool textb = false;
-            bool texteb= false;
-            bool userb = false;
-            int ct=1;
-            unsigned long now = millis();
-            
-            while (millis() - now < 5000) {
-              while (client->available()) {
-                char c = client->read();
-                if(!texteb) body = body + c;
-                uname = uname + c;
-                avail = true;
-                if (ct==1) {
-                  if(body.endsWith(",\"text\":\"") or body.endsWith(",\"errors\":\"")) { body=""; textb = true; }
-                  if(textb and body.endsWith("\",\"")) { body.remove(body.length()-3,3); ct=2; uname=""; texteb=true;}
-                } else if (ct == 2) {
-                  if(uname.endsWith(",\"screen_name\":\"")) { uname="@"; userb = true; }
-                  if(userb and uname.endsWith("\",\"")) { uname.remove(uname.length()-3,3); break; }
-                }
-              }
-              if (avail and !(textb)) body= "";
-              if (avail) break;
-            }
-            body = uname + " says " + body;
-          #endif
-          
-          #ifdef METHOD4
-            String body;
-            
-            bool avail = false;
-            bool textb = false;
-            unsigned long now = millis();
-            
-            while (millis() - now < 5000) {
-              while (client->available()) {
-                char c = client->read();
-                body = body + c;
-                avail = true;
-                if(body.endsWith("{\"statuses\":[")) { body="{\"statuses\":[ "; textb = true; }
-//                if(textb and body.endsWith("},\"metadata\":")) { body.remove(body.length()-13,13); body += "}}]}"; break; }
-                if(textb and body.endsWith(",\"followers_count\":")) { body.remove(body.length()-19,19); body += "}}]}"; break; }
-              }
-              if (avail and !(textb)) body= "";
-              if (avail) break;
-            }
-//            String body1;
-//            unsigned long now = millis();
-//            bool avail = false;
-//            
-//            while (millis() - now < 5000) {
-//              while(client->available()) {
-////                body1 = client->readString();
-//                  char c = client->read();
-////                  if(c == '{' or avail) {
-//                    body1 = body1 + c;
-////                    avail = true;
-////                  }
-//              }
-//              if (avail) break;
-//            }
-////            unsigned long firstClosingBracket = body1.indexOf('{');
-//            String body=body1.substring(body1.indexOf('{')); body1="";
-          #endif
-
+            if (avail and !(textb)) body= "";
+            if (avail) break;
+          }
+          body = uname + " says " + body;
           *reply = body;
           client->flush();
           client->stop();
